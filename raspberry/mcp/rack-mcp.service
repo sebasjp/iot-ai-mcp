@@ -1,0 +1,21 @@
+# Servicio systemd del MCP en la Raspberry Pi.
+# Instalar:
+#   sudo cp rack-mcp.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now rack-mcp
+# Ver logs:  journalctl -u rack-mcp -f
+# Ajustar User y las rutas si el usuario de la Pi no es "pi".
+
+[Unit]
+Description=Servidor MCP del Rack01 (FastMCP)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/iot-ai-mcp/raspberry/mcp
+ExecStart=/home/pi/.local/bin/uv run --frozen server.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
