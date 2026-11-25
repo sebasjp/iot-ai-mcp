@@ -1,0 +1,16 @@
+# Secretos: NUNCA al repositorio
+certs/
+*.pem
+*.pem.crt
+*.pem.key
+.env
+
+# Modelo (se copia a la Pi con scp) y datos locales
+modelo/
+fotos/
+imagenes_prueba/
+*.db
+
+# Python
+.venv/
+__pycache__/
