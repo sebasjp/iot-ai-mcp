@@ -7,13 +7,13 @@ Documento de referencia del equipo. Lo marcado como **Propuesta** es un punto de
 
 ## 1. Caso de uso
 
-Un rack de TI enfrenta tres riesgos: **el ambiente, la máquina y las personas**. El sistema monitorea los tres con modelos de IA que corren en el borde (ESP32-S3 y Raspberry Pi), guarda todo en AWS y permite consultarlo en lenguaje natural mediante un servidor MCP.
+Un rack de TI enfrenta tres riesgos: **el ambiente, la máquina y el acceso físico**. El sistema monitorea los tres con modelos de IA que corren en el borde (ESP32-S3 y Raspberry Pi), guarda todo en AWS y permite consultarlo en lenguaje natural mediante un servidor MCP.
 
 | Riesgo | Modelo | Pregunta que responde |
 |---|---|---|
 | Ambiente | Temperatura y humedad (DHT22) | ¿Se está calentando o humedeciendo el rack? |
 | Máquina | Vibración del ventilador (MPU-6050) | ¿El sistema de enfriamiento está por fallar? |
-| Personas | Clasificación de imágenes (webcam USB) | ¿Hay alguien frente al rack? ¿Está la puerta abierta? |
+| Acceso físico | Clasificación de imágenes (webcam USB) | ¿Está abierta la puerta del rack? |
 
 El montaje es un **prototipo a escala**: el ventilador de pie representa la bandeja de ventilación del rack y un mueble con puerta representa el rack.
 
@@ -120,14 +120,23 @@ Raspberry Pi (Julián) servidor MCP  ── consulta ─────────
 | Aspecto | Definición |
 |---|---|
 | Sensor | Webcam USB (UVC) en la Raspberry Pi 3 |
-| Tipo de modelo | Clasificación de imágenes, variante **B1: presencia** |
-| Clases | `vacio`, `persona`, `puerta_abierta` |
-| Qué resuelve | Registro auditable de quién está frente al rack (ISO 27001 / TIA-942) y cruce con los otros sensores |
+| Tipo de modelo | Clasificación **binaria** de imágenes |
+| Clases | `puerta_cerrada`, `puerta_abierta` |
+| Qué resuelve | Registro auditable de los accesos al rack (ISO 27001 / TIA-942) y cruce con los otros sensores |
+
+**Por qué binario:** se eligió por simplicidad y rapidez. Son dos clases con una diferencia visual clara, sin casos ambiguos, y la captura no requiere voluntarios.
+
+**Pregunta esperable en el pitch:** "¿por qué no un sensor magnético de puerta?" Conviene preparar la respuesta. Por ejemplo:
+- La cámara no requiere instalar nada en el rack.
+- La misma cámara puede ampliarse después a detectar personas u otros riesgos.
+- El evento queda cruzado con los otros sensores.
 
 **Consideraciones:**
-- El "rack" es un mueble con puerta, fijo frente a la cámara.
+- El "rack" es un mueble o una caja con puerta, fijo frente a la cámara. La misma caja va a la demo.
 - **Captura:** con `edge-impulse-linux` la webcam se conecta al estudio de Edge Impulse.
-- **Cantidad de datos:** de 50 a 100 o más fotos por clase, variando la persona, la ropa, la luz y la posición.
+- **Cantidad de datos:** de 50 a 100 o más fotos por clase.
+  - Variar el ángulo de apertura (entreabierta y totalmente abierta), la luz y el fondo.
+  - Incluir algunas fotos con personas u objetos en la escena, para que el modelo no confunda "algo nuevo" con "puerta abierta".
 - **Propuesta de modelo:** transfer learning con MobileNetV2 a 96×96 o 160×160 px.
 - **Rendimiento:** en la Pi 3 una inferencia tarda cientos de milisegundos. Se clasifica cada pocos segundos, no en video continuo.
 
@@ -145,11 +154,11 @@ Se implementa con **FastMCP** (Python), como pidió el profesor. Corre en la Ras
 
 | Tool (nombre propuesto) | Qué responde |
 |---|---|
-| `consultar_prediccion_imagenes` | Último estado de la cámara y eventos recientes (presencia, puerta abierta) |
+| `consultar_prediccion_imagenes` | Estado actual de la puerta del rack y las aperturas recientes |
 | `consultar_prediccion_sensores` | Última predicción y lectura de temperatura/humedad y de vibración |
 | `consultar_historico` | Lecturas y predicciones en un rango de tiempo, filtradas por fuente |
 
-Ejemplo de la demo: *"¿Qué pasó anoche en el rack?"* → *"A las 2:14 a. m. el ventilador mostró desbalance, la temperatura subió 3 °C en 10 minutos y nadie estuvo frente al rack."*
+Ejemplo de la demo: *"¿Qué pasó anoche en el rack?"* → *"A las 2:14 a. m. el ventilador mostró desbalance, la temperatura subió 3 °C en 10 minutos y la puerta del rack permaneció cerrada."*
 
 ---
 
@@ -163,7 +172,7 @@ Esta es la parte que permite trabajar en paralelo. **Cualquier cambio aquí se a
 |---|---|
 | `env` | `normal`, `falla_enfriamiento`, `riesgo_condensacion` |
 | `vibration` | `apagado`, `normal`, `desbalanceado` |
-| `camera` | `vacio`, `persona`, `puerta_abierta` |
+| `camera` | `puerta_cerrada`, `puerta_abierta` |
 
 ### 6.2 Dispositivos (Things en AWS IoT), uno por dispositivo y cada uno con su certificado
 
@@ -195,8 +204,8 @@ Campos comunes en todos los mensajes:
 
 // datacenter/rack01/camera
 {"device_id":"rack01-camera","ts":1795400000000,
- "label":"persona","confidence":0.91,
- "scores":{"vacio":0.04,"persona":0.91,"puerta_abierta":0.05}}
+ "label":"puerta_abierta","confidence":0.95,
+ "scores":{"puerta_cerrada":0.05,"puerta_abierta":0.95}}
 ```
 
 **Frecuencia de publicación (Propuesta):** cada 10 s, y de inmediato cuando cambia la etiqueta.
@@ -221,15 +230,14 @@ Campos comunes en todos los mensajes:
 |---|---|---|
 | env | `falla_enfriamiento` o `riesgo_condensacion` | "Rack01: tendencia de falla de enfriamiento (24,8 °C, subiendo)" |
 | vibration | `desbalanceado` o `apagado` | "Rack01: ventilador desbalanceado, revisar" |
-| camera | `persona` o `puerta_abierta` | "Rack01: puerta del rack abierta" |
+| camera | **Cada vez que la puerta se abre**, a cualquier hora. Se dispara en la transición de `puerta_cerrada` a `puerta_abierta`, no en cada mensaje mientras siga abierta | "Rack01: puerta del rack abierta" |
 
 ### 7.2 Alarmas cruzadas (planeadas)
 
 | Combinación | Interpretación | Prioridad |
 |---|---|---|
 | vibration anómala + env `falla_enfriamiento` | Falla de enfriamiento confirmada por dos fuentes | Alta |
-| camera `persona` + vibration anómala | Probable intervención de un técnico: aporta contexto y evita una falsa alarma | Informativa |
-| camera `puerta_abierta` sin `persona` | Puerta abierta y nadie a la vista | Media |
+| camera `puerta_abierta` + vibration anómala | Probable intervención de un técnico: aporta contexto y evita una falsa alarma | Informativa |
 
 ---
 
@@ -312,6 +320,6 @@ iot-ai-mcp/
 - [ ] **Carga de Juan:** tiene el modelo de imágenes, AWS, backend, dashboard y la lógica de alarmas. Hay que vigilarla y redistribuir si se atrasa.
 - [ ] **Interfaz entre las alarmas y Telegram:** por ejemplo, si el backend llama directamente a la API de Telegram con el token del bot de Julián, o si Julián entrega una función de envío que el backend invoca.
 - [ ] **Ventilador:** ¿se entrena solo con la cabeza fija, o se incluye la oscilación dentro de `normal` y `desbalanceado`?
-- [ ] **Alarmas:** ya se decidió que van en el backend de AWS. Falta definir cuántas predicciones seguidas hacen falta para disparar y si la presencia alerta siempre o solo fuera de horario.
+- [ ] **Alarmas:** ya se decidió que van en el backend de AWS. La puerta abierta alerta siempre. Falta definir cuántas predicciones seguidas hacen falta para disparar.
 - [ ] **MCP:** confirmar el transporte (la propuesta es HTTP en la red local) y con qué cliente se hace la demo (Claude, VS Code, etc.).
 - [ ] **Validar con el profesor:** la cámara USB en la Pi en lugar del ESP32-CAM. El MCP con FastMCP en la Pi ya lo pidió él.
