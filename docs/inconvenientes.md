@@ -63,6 +63,17 @@ sección "Inconvenientes" del README.
   (script `correr-eim.sh`). El resto del sistema sigue usando sus bibliotecas. Resultado: el modelo
   arranca y escucha en su socket.
 
+### 2026-11-25 · El MCP (FastMCP) no se instala en la Pi con Buster
+
+- **Qué pasó:** `uv sync` falló compilando `cffi` (falta `ffi.h`). Detrás venía un problema mayor:
+  FastMCP depende de `cryptography`, cuyo wheel ARMv7 pide glibc ≥ 2.31 (Buster tiene 2.28), y
+  compilarlo exige Rust y OpenSSL 3.
+- **Solución:** sin reinstalar el sistema, con el mismo truco del `.eim`. Se usó Python 3.11, para
+  que todo salga de wheels ya compilados de PyPI y piwheels, y se corre con el loader de Bookworm de
+  `~/eim-libs`, al que se le agregaron `libffi8`, `libyaml` y `libssl3`. Script:
+  `raspberry/mcp/instalar-en-buster.sh`; servicio: `rack-mcp-buster.service`. Probado con una llamada
+  MCP real desde otro equipo: responde con datos de DynamoDB.
+
 ### 2026-11-25 · Disco de la Pi lleno (99 %) y bajo voltaje
 
 - **Qué pasó:** quedaban 83 MB libres; `vcgencmd get_throttled` dio `0x50005` (bajo voltaje y CPU
