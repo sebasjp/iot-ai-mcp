@@ -94,4 +94,7 @@ sección "Inconvenientes" del README.
 
 - **Qué pasó:** el inventario mostró que `rack-api` valida `device_id` con `^rack\d{2}$`, así que
   rechaza `rack01-env`, `rack01-vibration` y `rack01-camera`.
-- **Solución:** ampliar la validación (pendiente, fase 4), sin romper `rack01`.
+- **Solución (hecha):** `GET /readings` acepta `^rack\d{2}(-(env|vibration|camera))?$` y
+  `POST /command` sigue solo con `rack01`. Código en `aws/rack-api/`. Desplegado con un respaldo previo
+  (versión 1 de la Lambda) y probado contra la API real. La versión que había en AWS era un poco
+  más vieja que la del repo de la Práctica 3; se partió de la del repo.

@@ -27,7 +27,7 @@ política `ReadOnlyAccess`), comparada con el repo de la Práctica 3
 | Tabla `RackTelemetry` y rol `iot-dynamodb-rack-role` | Se reutiliza | La regla nueva usa el mismo rol, porque ya permite PutItem en la tabla |
 | Things `rack01-env`, `rack01-vibration`, `rack01-camera` | **Falta** | Crear con un certificado y una política cada uno |
 | Regla para `datacenter/rack01/{env,vibration,camera}` | **Falta** | La regla actual solo escucha `+/telemetry`; los tópicos nuevos no le llegan |
-| Lambda `rack-api` | **Se adapta** | Su validación `^rack\d{2}$` rechaza `rack01-env` y los demás `device_id` nuevos; hay que ampliarla |
+| Lambda `rack-api` | **Adaptada (2026-11-25)** | Acepta `rack01` y `rack01-{env,vibration,camera}` en `GET /readings`; comandos solo `rack01`. Respaldo: versión 1. Código en `aws/rack-api/` |
 | Lambda de alarmas + Telegram | **Falta** | Regla IoT → Lambda → API de Telegram |
 | Bucket de fotos y permiso de subida para la Pi | **Falta** | Por decidir el mecanismo |
 | Usuario IAM de solo lectura para el MCP | **Falta** | `dynamodb:Query`/`GetItem` sobre `RackTelemetry` |
