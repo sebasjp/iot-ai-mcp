@@ -1,0 +1,15 @@
+[Unit]
+Description=Rack monitor: clasificador de la puerta (Edge Impulse) -> AWS IoT
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/iot-ai-mcp/raspberry/vision
+ExecStart=/home/pi/.local/bin/uv run python -m rack_vision.main
+Restart=always
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
