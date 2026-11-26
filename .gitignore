@@ -1,5 +1,12 @@
 local/
 
+# Credenciales de los dispositivos (WiFi, certificados y llaves de AWS IoT)
+*secrets.h
+*.pem
+*.pem.crt
+*.pem.key
+certs/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
