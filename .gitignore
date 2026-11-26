@@ -230,3 +230,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# MCP en la Pi con Buster: lista generada por instalar-en-buster.sh
+raspberry/mcp/requirements-pi.txt
