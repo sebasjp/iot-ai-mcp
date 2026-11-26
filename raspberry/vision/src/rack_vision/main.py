@@ -1,6 +1,7 @@
 """Servicio de visión: clasifica la puerta del rack cada CICLO_S segundos y publica en AWS IoT.
 
-Ciclo: capturar foto -> preprocesar (ffmpeg) -> clasificar (.eim) -> decidir -> publicar o encolar.
+Ciclo: capturar foto -> preprocesar (ffmpeg) -> clasificar (.eim) -> decidir -> publicar o encolar
+-> subir la foto a S3 (la última al publicar y la de cada apertura).
 Tópico y payload: contrato de datos (datacenter/rack01/camera).
 """
 import json
@@ -18,6 +19,7 @@ from rack_vision.decision import Decisor, ganadora
 from rack_vision.fotos import guardar_apertura, guardar_ultima
 from rack_vision.imagen import FuenteCarpeta, FuenteWebcam, preprocesar
 from rack_vision.modelo import ModeloEIM
+from rack_vision.nube import SubidorFotos
 
 # ---------- Configuración ----------
 BASE = Path(__file__).resolve().parents[2]  # .../raspberry/vision
@@ -37,6 +39,8 @@ CICLO_S = float(os.getenv("CICLO_S", "5"))
 PUBLICAR_CADA_S = float(os.getenv("PUBLICAR_CADA_S", "10"))
 CARPETA_FOTOS = BASE / os.getenv("CARPETA_FOTOS", "fotos")
 MAX_FOTOS = int(os.getenv("MAX_FOTOS_APERTURA", "200"))
+S3_BUCKET = os.getenv("S3_BUCKET", "")
+S3_PREFIJO = os.getenv("S3_PREFIJO", "rack01")
 
 CERTS = BASE / "certs"
 ETIQUETAS_CONTRATO = {"puerta_abierta", "puerta_cerrada"}
@@ -112,7 +116,7 @@ def construir_payload(ts: int, scores: dict, timing: dict) -> dict:
     }
 
 
-def ciclo(modelo, fuente, decisor, cliente, cola) -> None:
+def ciclo(modelo, fuente, decisor, cliente, cola, nube) -> None:
     ts = int(time.time() * 1000)  # hora de la captura
     foto = fuente.capturar()
     rgb = preprocesar(foto, modelo.ancho, modelo.alto)
@@ -124,11 +128,15 @@ def ciclo(modelo, fuente, decisor, cliente, cola) -> None:
     if apertura:
         destino = guardar_apertura(foto, CARPETA_FOTOS, ts, MAX_FOTOS)
         print(f"[APERTURA] Puerta abierta, foto en {destino}")
+        clave = nube.subir_apertura(destino)
+        if clave:
+            payload["foto"] = clave  # campo opcional: el dashboard muestra la foto de la apertura
 
     print(f"[VISION] {foto.name}: {payload['label']} ({payload['confidence']:.2f}) "
           f"en {payload['inference_ms']} ms")
     if hay_que_publicar:
         publicar(cliente, cola, json.dumps(payload))
+        nube.subir_ultima(foto)
     vaciar_cola(cliente, cola)
 
 
@@ -148,10 +156,12 @@ def main() -> None:
     fuente = crear_fuente()
     cola = ColaPendientes(BASE / "pendientes.db")
     decisor = Decisor(UMBRAL, PUBLICAR_CADA_S)
+    nube = SubidorFotos(S3_BUCKET, S3_PREFIJO)
     cliente = crear_cliente()
     cliente.connect_async(ENDPOINT, 8883, keepalive=60)
     cliente.loop_start()  # hilo aparte: red, pings y reconexiones
-    print(f"[VISION] Fuente: {FUENTE} · ciclo {CICLO_S} s · {len(cola)} pendientes en cola")
+    print(f"[VISION] Fuente: {FUENTE} · ciclo {CICLO_S} s · {len(cola)} pendientes en cola · "
+          f"fotos a S3: {S3_BUCKET + '/' + S3_PREFIJO if nube.activo else 'desactivado'}")
 
     try:
         while True:
@@ -159,7 +169,7 @@ def main() -> None:
             if not modelo.vivo():
                 raise SystemExit("El proceso del modelo murió; systemd reinicia el servicio")
             try:
-                ciclo(modelo, fuente, decisor, cliente, cola)
+                ciclo(modelo, fuente, decisor, cliente, cola, nube)
             except Exception as e:  # una foto fallida no tumba el servicio
                 print(f"[ERROR] Ciclo fallido: {e!r}")
             time.sleep(max(0.0, CICLO_S - (time.monotonic() - inicio)))
@@ -168,6 +178,7 @@ def main() -> None:
     finally:
         cliente.loop_stop()
         cliente.disconnect()
+        nube.cerrar()
         modelo.detener()
 
 

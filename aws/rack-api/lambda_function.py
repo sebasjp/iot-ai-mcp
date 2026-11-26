@@ -4,8 +4,8 @@ Rutas (API Gateway HTTP API, payload v2.0):
   GET  /readings?device_id=rack01-camera&hours=1  -> lecturas/predicciones desde DynamoDB
   POST /command  {"device_id": "rack01", "damper_angle": 90}  -> publica en IoT Core (legado)
 
-device_id válidos en GET: rack01 (Práctica 3) y rack01-env, rack01-vibration, rack01-camera
-(Actividad 4). Los dispositivos nuevos no reciben comandos.
+device_id válidos en GET: rack01 (Práctica 3); rack01-env, rack01-vibration y rack01-camera
+(Actividad 4); rack01-alarmas (historial de alarmas). Los dispositivos nuevos no reciben comandos.
 """
 import json
 import os
@@ -22,8 +22,8 @@ IOT_ENDPOINT = os.environ["IOT_ENDPOINT"]
 table = boto3.resource("dynamodb").Table(TABLE_NAME)
 iot = boto3.client("iot-data", endpoint_url=f"https://{IOT_ENDPOINT}")
 
-# Lista blanca de device_id: el legado (rack01) y los tres dispositivos de la Actividad 4
-DEVICE_RE = re.compile(r"^rack\d{2}(-(env|vibration|camera))?$")
+# Lista blanca de device_id: el legado (rack01), los tres dispositivos de la Actividad 4 y las alarmas
+DEVICE_RE = re.compile(r"^rack\d{2}(-(env|vibration|camera|alarmas))?$")
 COMMAND_RE = re.compile(r"^rack\d{2}$")  # comandos: solo el legado
 
 

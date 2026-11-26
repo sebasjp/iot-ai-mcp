@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Clasificador de la puerta del rack en la Raspberry Pi 3 (Edge Impulse .eim) -> AWS IoT"
 requires-python = ">=3.12"
 dependencies = [
+    "boto3>=1.40",
     "paho-mqtt>=2.2.0",
     "python-dotenv>=1.2.4",
 ]
