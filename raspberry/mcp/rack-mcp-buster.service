@@ -1,0 +1,22 @@
+# Servicio del MCP para la Pi con Buster (ver instalar-en-buster.sh).
+# Igual que rack-mcp.service, pero arranca Python con el loader de Bookworm en vez de `uv run`.
+# Instalar:
+#   sudo cp rack-mcp-buster.service /etc/systemd/system/rack-mcp.service
+#   sudo systemctl daemon-reload && sudo systemctl enable --now rack-mcp
+# Ver logs:  journalctl -u rack-mcp -f
+
+[Unit]
+Description=Servidor MCP del Rack01 (FastMCP, Buster + libs de Bookworm)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/iot-ai-mcp/raspberry/mcp
+ExecStart=/home/pi/py-bookworm.sh /home/pi/iot-ai-mcp/raspberry/mcp/.venv/bin/python server.py
+Restart=on-failure
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
