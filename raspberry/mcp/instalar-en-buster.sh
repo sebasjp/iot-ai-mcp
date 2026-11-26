@@ -17,10 +17,12 @@ cd "$(dirname "$0")"
 
 [ -x "$LIBS/lib/ld-linux-armhf.so.3" ] || { echo "Falta $LIBS (ver docs/inconvenientes.md)"; exit 1; }
 
-echo "1/5 Bibliotecas de Bookworm que piden cffi y pyyaml (libffi8, libyaml)"
+echo "1/5 Bibliotecas de Bookworm que piden cffi, pyyaml y cryptography (libffi8, libyaml, libssl3)"
 tmp=$(mktemp -d)
 wget -q -P "$tmp" "$DEBIAN/libf/libffi/libffi8_3.4.4-1_armhf.deb"
 wget -q -P "$tmp" "$DEBIAN/liby/libyaml/libyaml-0-2_0.2.5-1_armhf.deb"
+# El wheel de cryptography de piwheels enlaza el OpenSSL 3 del sistema (Buster trae 1.1)
+wget -q -P "$tmp" "http://security.debian.org/debian-security/pool/updates/main/o/openssl/libssl3_3.0.22-1~deb12u2_armhf.deb"
 for d in "$tmp"/*.deb; do dpkg-deb -x "$d" "$LIBS"; done
 rm -rf "$tmp"
 
