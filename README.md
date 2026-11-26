@@ -85,6 +85,20 @@ cerradas:
 - Estas métricas corresponden al **modelo v3, antes de limpiar el dataset**. Se reemplazan al reentrenar
   con fotos de la cámara fija en su posición de la demo.
 
-**En el dispositivo (Raspberry Pi 3):** latencia de inferencia y uso de RAM, _pendiente de medir_.
+**En el dispositivo (Raspberry Pi 3, `armv7l`, Raspberry Pi OS Buster).** Medido con
+`raspberry/vision/test_modelo.py` sobre 20 fotos (10 por clase) con el `.eim` de Edge Impulse (*Linux ARMv7*, *Unoptimized float32*):
+
+| Medida | Valor |
+|---|---|
+| Inferencia (DSP + clasificación, reportada por el `.eim`) | media **15 ms** · máx. 23 ms |
+| Ciclo completo (decodificar y redimensionar con `ffmpeg` + inferencia) | media **1,24 s** |
+| RAM del proceso del modelo (VmRSS) | **42,9 MB** (de ~750 MB libres) |
+| Arranque del modelo | 0,1 s |
+
+La inferencia es barata: casi todo el ciclo se va en `ffmpeg` decodificando fotos de alta resolución.
+Aun así cabe de sobra en el ciclo de 5 s. Las 20 fotos salieron con la clase de su carpeta. Dos quedaron
+bajo el umbral de 0,6 (0,553 y 0,531) y en el servicio se tratan como inciertas: no cambian el estado.
+Varias de estas fotos pueden haberse usado en el entrenamiento, así que esta prueba valida la latencia y
+el despliegue, **no la exactitud**.
 
 Detalle de inconvenientes: [`docs/inconvenientes.md`](docs/inconvenientes.md).
