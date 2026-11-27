@@ -3,6 +3,32 @@
 <!-- Secciones exigidas por la Actividad 4: caso de uso, arquitectura, código, inconvenientes,
      resultados y conclusiones. Cada responsable completa la parte de su componente. -->
 
+## Arquitectura
+
+![Arquitectura del monitor del rack01](docs/arquitectura/arquitectura.png)
+
+Versión interactiva (zoom, búsqueda y recorridos guiados): abrir
+[`docs/arquitectura/arquitectura.html`](docs/arquitectura/arquitectura.html) en el navegador. Fuente
+editable: `docs/arquitectura/arquitectura.json` (generado con Archify).
+
+1. **Edge (la IA corre aquí).** La Raspberry Pi 3 clasifica la puerta con un modelo de Edge Impulse
+   (`.eim`), la ESP32-S3 `rack01-env` clasifica temperatura/humedad y la ESP32-S3 `rack01-vibration`
+   clasifica la vibración del ventilador. Solo viaja la predicción (`label`, `confidence`, `scores`).
+2. **Ingesta.** Cada dispositivo publica por MQTT con TLS mutuo (certificado X.509 y política IoT
+   propios) en `datacenter/rack01/{camera,env,vibration}`.
+3. **AWS IoT Core** aplica dos reglas por mensaje: `rack_predicciones_to_dynamodb` guarda la fila en
+   **DynamoDB `RackTelemetry`** (PK `device_id`, SK `ts`) y `rack_alarmas_to_lambda` invoca la Lambda
+   **`rack-alarmas`**.
+4. **Alarmas.** `rack-alarmas` lee el historial reciente en DynamoDB, aplica las reglas (3 predicciones
+   anómalas seguidas, apertura de puerta, alarmas cruzadas), avisa por **Telegram** y guarda la alarma
+   en la misma tabla (`device_id` `rack01-alarmas`).
+5. **Fotos.** La Pi sube a **S3** la última foto y la de cada apertura (usuario IAM `rack-pi-fotos`,
+   solo `PutObject`).
+6. **Dashboard.** Next.js estático en S3; cada 10 s consulta **API Gateway → Lambda `rack-api` →
+   DynamoDB** y muestra las fotos desde el bucket.
+7. **MCP.** FastMCP corre en la Pi y consulta DynamoDB con un usuario IAM de solo lectura
+   (`rack-mcp-lectura`). Claude o VS Code le preguntan en lenguaje natural por HTTP (`:8000/mcp`).
+
 ## Resultados
 
 ### Modelo 1 — Clasificación de imágenes (puerta del rack) · Raspberry Pi 3

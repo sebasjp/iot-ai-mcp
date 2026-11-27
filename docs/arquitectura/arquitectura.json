@@ -1,0 +1,389 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Monitor inteligente del rack01",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1220,
+      620
+    ],
+    "views": [
+      {
+        "id": "telemetria",
+        "label": "Predicciones",
+        "focus": [
+          "pi",
+          "env",
+          "vib",
+          "iot",
+          "dynamo"
+        ],
+        "note": "Cada dispositivo infiere en el edge y publica por MQTT/TLS; la regla IoT guarda en DynamoDB."
+      },
+      {
+        "id": "alarmas",
+        "label": "Alarmas",
+        "focus": [
+          "iot",
+          "lambda",
+          "dynamo",
+          "telegram"
+        ],
+        "note": "La regla de alarmas invoca la Lambda, que lee el historial, decide y avisa por Telegram."
+      },
+      {
+        "id": "consulta",
+        "label": "Dashboard y MCP",
+        "focus": [
+          "dash",
+          "api",
+          "dynamo",
+          "s3",
+          "mcp",
+          "clientes"
+        ],
+        "note": "El dashboard y el MCP solo leen: API Gateway + Lambda o DynamoDB directo."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "pi",
+      "type": "backend",
+      "label": "Raspberry Pi 3",
+      "sublabel": "rack-vision · .eim",
+      "tag": "Juan",
+      "pos": [
+        30,
+        70
+      ],
+      "size": [
+        160,
+        72
+      ]
+    },
+    {
+      "id": "env",
+      "type": "backend",
+      "label": "ESP32-S3 env",
+      "sublabel": "DHT22 · modelo T/H",
+      "tag": "César",
+      "pos": [
+        30,
+        210
+      ],
+      "size": [
+        160,
+        72
+      ]
+    },
+    {
+      "id": "vib",
+      "type": "backend",
+      "label": "ESP32-S3 vibration",
+      "sublabel": "MPU-6050 · FFT",
+      "tag": "Sebas",
+      "pos": [
+        30,
+        350
+      ],
+      "size": [
+        160,
+        72
+      ]
+    },
+    {
+      "id": "iot",
+      "type": "messagebus",
+      "label": "AWS IoT Core",
+      "sublabel": "broker + 2 reglas",
+      "pos": [
+        280,
+        210
+      ],
+      "size": [
+        160,
+        72
+      ]
+    },
+    {
+      "id": "dynamo",
+      "type": "database",
+      "label": "DynamoDB",
+      "sublabel": "RackTelemetry",
+      "pos": [
+        530,
+        210
+      ],
+      "size": [
+        160,
+        72
+      ]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "API Gateway",
+      "sublabel": "Lambda rack-api",
+      "pos": [
+        780,
+        210
+      ],
+      "size": [
+        160,
+        72
+      ]
+    },
+    {
+      "id": "dash",
+      "type": "frontend",
+      "label": "Dashboard",
+      "sublabel": "Next.js en S3",
+      "brand": "next-js",
+      "pos": [
+        1030,
+        210
+      ],
+      "size": [
+        160,
+        72
+      ]
+    },
+    {
+      "id": "s3",
+      "type": "database",
+      "label": "S3 fotos",
+      "sublabel": "ultima + aperturas",
+      "pos": [
+        780,
+        70
+      ],
+      "size": [
+        160,
+        72
+      ]
+    },
+    {
+      "id": "lambda",
+      "type": "backend",
+      "label": "Lambda rack-alarmas",
+      "sublabel": "reglas.py",
+      "tag": "Juan",
+      "pos": [
+        280,
+        350
+      ],
+      "size": [
+        160,
+        72
+      ]
+    },
+    {
+      "id": "telegram",
+      "type": "external",
+      "label": "Telegram",
+      "sublabel": "bot del equipo",
+      "brand": "telegram",
+      "pos": [
+        280,
+        510
+      ],
+      "size": [
+        160,
+        72
+      ]
+    },
+    {
+      "id": "mcp",
+      "type": "backend",
+      "label": "Servidor MCP",
+      "sublabel": "FastMCP en la Pi",
+      "tag": "Julián",
+      "pos": [
+        530,
+        510
+      ],
+      "size": [
+        160,
+        72
+      ]
+    },
+    {
+      "id": "clientes",
+      "type": "external",
+      "label": "Claude / VS Code",
+      "sublabel": "lenguaje natural",
+      "brand": "claude",
+      "pos": [
+        780,
+        510
+      ],
+      "size": [
+        160,
+        72
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Edge · la IA corre aquí",
+      "wraps": [
+        "pi",
+        "env",
+        "vib"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "AWS us-east-1",
+      "wraps": [
+        "iot",
+        "dynamo",
+        "api",
+        "dash",
+        "s3",
+        "lambda"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "pi-iot",
+      "from": "pi",
+      "to": "iot",
+      "label": "MQTT/TLS",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "top",
+      "labelAt": [
+        405,
+        165
+      ]
+    },
+    {
+      "id": "env-iot",
+      "from": "env",
+      "to": "iot",
+      "label": "MQTT/TLS",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "vib-iot",
+      "from": "vib",
+      "to": "iot",
+      "label": "MQTT/TLS",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "pi-s3",
+      "from": "pi",
+      "to": "s3",
+      "label": "fotos (PutObject)",
+      "variant": "dashed"
+    },
+    {
+      "id": "iot-dynamo",
+      "from": "iot",
+      "to": "dynamo",
+      "label": "regla"
+    },
+    {
+      "id": "iot-lambda",
+      "from": "iot",
+      "to": "lambda",
+      "label": "regla alarmas",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [
+        318,
+        316
+      ]
+    },
+    {
+      "id": "lambda-dynamo",
+      "from": "lambda",
+      "to": "dynamo",
+      "label": "historial / alarma"
+    },
+    {
+      "id": "lambda-telegram",
+      "from": "lambda",
+      "to": "telegram",
+      "label": "Bot API",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [
+        395,
+        466
+      ]
+    },
+    {
+      "id": "dash-api",
+      "from": "dash",
+      "to": "api",
+      "label": "GET /readings"
+    },
+    {
+      "id": "api-dynamo",
+      "from": "api",
+      "to": "dynamo",
+      "label": "Query"
+    },
+    {
+      "id": "dash-s3",
+      "from": "dash",
+      "to": "s3",
+      "label": "img",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "right"
+    },
+    {
+      "id": "mcp-dynamo",
+      "from": "mcp",
+      "to": "dynamo",
+      "label": "Query (lectura)",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "clientes-mcp",
+      "from": "clientes",
+      "to": "mcp",
+      "label": "HTTP /mcp"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "La nube nunca infiere",
+      "items": [
+        "Cada modelo corre en su dispositivo",
+        "Solo viaja la predicción: label, confidence, scores"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Seguridad",
+      "items": [
+        "Un certificado X.509 y una política por thing",
+        "IAM de mínimo privilegio para fotos y MCP"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Una sola tabla",
+      "items": [
+        "RackTelemetry: PK device_id, SK ts",
+        "Predicciones y alarmas (rack01-alarmas)"
+      ]
+    }
+  ]
+}
