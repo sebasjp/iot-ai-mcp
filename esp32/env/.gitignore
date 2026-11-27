@@ -1,0 +1,5 @@
+# Datos privados: nunca al repositorio
+secrets.h
+*.pem
+*.key
+*.crt
